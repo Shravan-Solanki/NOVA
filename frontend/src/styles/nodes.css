@@ -1,0 +1,94 @@
+/* src/styles/nodes.css — Node card styles */
+
+/* ─── Base Node Card ────────────────────────────────────────────────────── */
+.flow-node {
+  background: var(--color-bg-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  min-width: 180px;
+  max-width: 240px;
+  box-shadow: var(--shadow-node);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  overflow: hidden;
+}
+.flow-node:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 20px var(--color-accent-glow);
+}
+
+/* ─── Category Left Border ──────────────────────────────────────────────── */
+.node--data       { border-left: 3px solid var(--color-data); }
+.node--preprocess { border-left: 3px solid var(--color-preprocess); }
+.node--model      { border-left: 3px solid var(--color-model); }
+.node--evaluate   { border-left: 3px solid var(--color-evaluate); }
+
+/* ─── Status Borders ────────────────────────────────────────────────────── */
+.node--running {
+  border-color: var(--color-warning) !important;
+  box-shadow: 0 0 16px rgba(245,158,11,0.3) !important;
+  animation: pulse-running 1.2s ease-in-out infinite;
+}
+.node--success {
+  border-color: var(--color-success) !important;
+  box-shadow: 0 0 16px rgba(34,197,94,0.25) !important;
+}
+.node--error {
+  border-color: var(--color-error) !important;
+  box-shadow: 0 0 16px rgba(239,68,68,0.3) !important;
+}
+
+@keyframes pulse-running {
+  0%, 100% { box-shadow: 0 0 10px rgba(245,158,11,0.2); }
+  50%       { box-shadow: 0 0 24px rgba(245,158,11,0.5); }
+}
+
+/* ─── Node Header ───────────────────────────────────────────────────────── */
+.flow-node__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--color-bg-surface-2);
+  border-bottom: 1px solid var(--color-border);
+}
+.flow-node__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: 0.3px;
+}
+.flow-node__badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 99px;
+}
+.flow-node__badge--running { background: rgba(245,158,11,0.2); color: var(--color-warning); }
+.flow-node__badge--success { background: rgba(34,197,94,0.2);  color: var(--color-success); }
+.flow-node__badge--error   { background: rgba(239,68,68,0.2);  color: var(--color-error); }
+
+/* ─── Node Body ─────────────────────────────────────────────────────────── */
+.flow-node__body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.node-info {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+.node-info strong { color: var(--color-text-primary); }
+.node-placeholder {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  opacity: 0.7;
+}
+.node-metrics { display: flex; flex-direction: column; gap: 2px; }
+.node-image {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+}

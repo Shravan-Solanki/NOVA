@@ -1,0 +1,4 @@
+# backend/storage/uploads/.gitkeep
+# This folder stores uploaded CSV files from the /api/upload endpoint
+# Files are named by their original filename
+# TODO: Add .gitignore rules to exclude *.csv from version control in production

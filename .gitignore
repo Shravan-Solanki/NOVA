@@ -1,0 +1,22 @@
+# .gitignore
+# Files and folders to exclude from version control
+
+# ── Python ──────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ── Node / Frontend ─────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+
+# ── OS files ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ─────────────────────────────────────────────────────────
+.vscode/
+.idea/

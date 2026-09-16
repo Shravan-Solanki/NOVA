@@ -1,0 +1,16 @@
+# backend/requirements.txt
+# Python dependencies for the FlowML backend
+# Install all with: pip install -r requirements.txt
+
+fastapi          # Web framework — handles HTTP routes, request/response models
+uvicorn          # ASGI server — runs the FastAPI app (uvicorn main:app --reload)
+python-multipart # Required by FastAPI to accept file uploads (multipart/form-data)
+pydantic         # Data validation — used to define request/response schemas
+pandas           # DataFrame operations — loading and transforming CSV data
+numpy            # Numerical arrays — used by scikit-learn and pandas
+scikit-learn     # ML algorithms — all classifiers, regressors, scalers, encoders
+matplotlib       # Plotting — confusion matrix, feature importance charts
+seaborn          # Statistical plotting — prettier confusion matrix heatmaps
+aiofiles         # Async file I/O — used for async file upload/save operations
+joblib           # Serialization — saving and loading trained scikit-learn models
+pytest           # Testing framework — runs backend unit and integration tests

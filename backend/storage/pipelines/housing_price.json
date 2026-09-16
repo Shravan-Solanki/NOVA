@@ -1,0 +1,259 @@
+{
+  "pipelineName": "housing price",
+  "nodes": [
+    {
+      "id": "imputer-1789570871554",
+      "type": "imputer",
+      "position": {
+        "x": 259.3646874118759,
+        "y": 130.06676276985343
+      },
+      "data": {
+        "label": "Imputer",
+        "nodeType": "imputer",
+        "params": {
+          "strategy": "drop_rows",
+          "fillValue": 0,
+          "columns": [
+            "total_bedrooms"
+          ]
+        },
+        "status": "success",
+        "results": {
+          "type": "info",
+          "strategy": "drop_rows",
+          "missingCountBefore": 207,
+          "missingCountAfter": 0,
+          "imputedColumns": [
+            "total_bedrooms"
+          ]
+        }
+      }
+    },
+    {
+      "id": "dataLoader-1789570889287",
+      "type": "dataLoader",
+      "position": {
+        "x": 15.848749997250039,
+        "y": 110.37824017037303
+      },
+      "data": {
+        "label": "Data Loader",
+        "nodeType": "dataLoader",
+        "params": {
+          "filePath": "C:\\Users\\solan\\Desktop\\New folder\\backend\\storage\\uploads\\housing.csv",
+          "targetColumn": "median_house_value",
+          "availableColumns": [
+            "longitude",
+            "latitude",
+            "housing_median_age",
+            "total_rooms",
+            "total_bedrooms",
+            "population",
+            "households",
+            "median_income",
+            "median_house_value",
+            "ocean_proximity"
+          ],
+          "shape": [
+            20640,
+            10
+          ]
+        },
+        "status": "success",
+        "results": {
+          "type": "info",
+          "shape": [
+            20640,
+            10
+          ],
+          "columns": [
+            "longitude",
+            "latitude",
+            "housing_median_age",
+            "total_rooms",
+            "total_bedrooms",
+            "population",
+            "households",
+            "median_income",
+            "median_house_value",
+            "ocean_proximity"
+          ],
+          "target": "median_house_value"
+        }
+      }
+    },
+    {
+      "id": "encoder-1789570981592",
+      "type": "encoder",
+      "position": {
+        "x": 275.9444959167015,
+        "y": 248.19789836673579
+      },
+      "data": {
+        "label": "Encoder",
+        "nodeType": "encoder",
+        "params": {
+          "encoderType": "LabelEncoder",
+          "columns": [
+            "ocean_proximity"
+          ]
+        },
+        "status": "success",
+        "results": {
+          "type": "info",
+          "encoderType": "LabelEncoder",
+          "encodedColumns": [
+            "ocean_proximity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "scaler-1789570989486",
+      "type": "scaler",
+      "position": {
+        "x": 101.85650661603282,
+        "y": 421.24964963585285
+      },
+      "data": {
+        "label": "Scaler",
+        "nodeType": "scaler",
+        "params": {
+          "scalerType": "StandardScaler"
+        },
+        "status": "success",
+        "results": {
+          "type": "info",
+          "scalerType": "StandardScaler"
+        }
+      }
+    },
+    {
+      "id": "regressor-1789570998769",
+      "type": "regressor",
+      "position": {
+        "x": 396.1481075766869,
+        "y": 491.7138357813615
+      },
+      "data": {
+        "label": "Regressor",
+        "nodeType": "regressor",
+        "params": {
+          "regressorType": "LinearRegression"
+        },
+        "status": "success",
+        "results": {
+          "type": "info",
+          "regressorType": "LinearRegression",
+          "modelName": "LinearRegression"
+        }
+      }
+    },
+    {
+      "id": "evaluator-1789571000781",
+      "type": "evaluator",
+      "position": {
+        "x": 588.8883814452843,
+        "y": 346.64051136413764
+      },
+      "data": {
+        "label": "Evaluator",
+        "nodeType": "evaluator",
+        "params": {
+          "metrics": [
+            "accuracy",
+            "f1",
+            "precision",
+            "recall",
+            "rmse",
+            "r2",
+            "mae"
+          ]
+        },
+        "status": "success",
+        "results": {
+          "type": "metrics",
+          "taskType": "regression",
+          "modelName": "LinearRegression",
+          "rmse": 70171.9954,
+          "r2": 0.6399,
+          "mae": 51388.7002
+        }
+      }
+    },
+    {
+      "id": "trainTestSplit-1789571035509",
+      "type": "trainTestSplit",
+      "position": {
+        "x": 483.1921022270212,
+        "y": 118.66814442278584
+      },
+      "data": {
+        "label": "Train/Test Split",
+        "nodeType": "trainTestSplit",
+        "params": {
+          "testSize": 0.2,
+          "randomState": 42,
+          "shuffle": true
+        },
+        "status": "success",
+        "results": {
+          "type": "info",
+          "train_size": 16346,
+          "test_size": 4087
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-1789570901315",
+      "source": "dataLoader-1789570889287",
+      "target": "imputer-1789570871554",
+      "sourceHandle": null,
+      "targetHandle": null,
+      "type": "removable"
+    },
+    {
+      "id": "e-1789570992821",
+      "source": "encoder-1789570981592",
+      "target": "scaler-1789570989486",
+      "sourceHandle": null,
+      "targetHandle": null,
+      "type": "removable"
+    },
+    {
+      "id": "e-1789571011565",
+      "source": "scaler-1789570989486",
+      "target": "regressor-1789570998769",
+      "sourceHandle": null,
+      "targetHandle": null,
+      "type": "removable"
+    },
+    {
+      "id": "e-1789571018725",
+      "source": "regressor-1789570998769",
+      "target": "evaluator-1789571000781",
+      "sourceHandle": null,
+      "targetHandle": null,
+      "type": "removable"
+    },
+    {
+      "id": "e-1789571040836",
+      "source": "imputer-1789570871554",
+      "target": "trainTestSplit-1789571035509",
+      "sourceHandle": null,
+      "targetHandle": null,
+      "type": "removable"
+    },
+    {
+      "id": "e-1789571056489",
+      "source": "trainTestSplit-1789571035509",
+      "target": "encoder-1789570981592",
+      "sourceHandle": null,
+      "targetHandle": null,
+      "type": "removable"
+    }
+  ]
+}

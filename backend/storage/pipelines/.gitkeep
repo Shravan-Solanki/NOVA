@@ -1,0 +1,3 @@
+# backend/storage/pipelines/.gitkeep
+# This folder stores saved pipeline JSON files from the /api/pipelines/save endpoint
+# Each file is named after the pipeline: e.g. "my_iris_pipeline.json"
