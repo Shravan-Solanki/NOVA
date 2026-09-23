@@ -23,9 +23,12 @@ class ScalerNode(BaseNode):
         y_train = merged_inputs.get("y_train")
         y_test = merged_inputs.get("y_test")
 
+        is_pre_split = False
         if X_train is None:
             if "X" in merged_inputs:
                 X_train = merged_inputs["X"]
+                y_train = merged_inputs.get("y")
+                is_pre_split = True
             else:
                 raise ValueError("Missing X_train or X in ScalerNode inputs")
 
@@ -40,7 +43,7 @@ class ScalerNode(BaseNode):
         # Ensure inputs are DataFrames to preserve feature names and allow type filtering
         if not isinstance(X_train, pd.DataFrame):
             X_train = pd.DataFrame(X_train)
-        if X_test is not None and not isinstance(X_test, pd.DataFrame):
+        if not is_pre_split and X_test is not None and not isinstance(X_test, pd.DataFrame):
             X_test = pd.DataFrame(X_test, columns=X_train.columns)
 
         # Scale only numeric columns to prevent string conversion errors with categoricals
@@ -50,7 +53,7 @@ class ScalerNode(BaseNode):
             X_train_scaled = X_train.copy()
             X_train_scaled[num_cols] = scaler.transform(X_train[num_cols])
 
-            if X_test is not None:
+            if not is_pre_split and X_test is not None:
                 X_test_scaled = X_test.copy()
                 X_test_scaled[num_cols] = scaler.transform(X_test[num_cols])
             else:
@@ -64,6 +67,15 @@ class ScalerNode(BaseNode):
             "scalerType": scalerType,
             "scaledColumns": num_cols
         }
+
+        if is_pre_split:
+            return {
+                "X": X_train_scaled,
+                "y": y_train,
+                "scaler": scaler,
+                "columns": num_cols
+            }
+
         return {
             "X_train": X_train_scaled,
             "X_test": X_test_scaled,

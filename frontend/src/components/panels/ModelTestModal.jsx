@@ -3,9 +3,18 @@
 
 import React, { useState, useEffect } from 'react'
 import { getModelSchema, predictModel } from '../../api/api'
+import useGraphStore from '../../store/graphStore'
 
 function ModelTestModal({ onClose }) {
-  const [loadingSchema, setLoadingSchema] = useState(true)
+  const { nodes } = useGraphStore()
+  const modelNodes = nodes.filter(n => {
+    const type = n.data?.nodeType || n.type
+    return type === 'classifier' || type === 'regressor'
+  })
+  const hasModelNode = modelNodes.length > 0
+  const hasTrainedModel = modelNodes.some(n => n.data?.status === 'success')
+
+  const [loadingSchema, setLoadingSchema] = useState(hasTrainedModel)
   const [schemaError, setSchemaError] = useState(null)
   const [modelInfo, setModelInfo] = useState(null)
   const [formInputs, setFormInputs] = useState({})
@@ -16,8 +25,13 @@ function ModelTestModal({ onClose }) {
   const [predictionResult, setPredictionResult] = useState(null)
 
   useEffect(() => {
-    fetchSchema()
-  }, [])
+    if (hasTrainedModel) {
+      fetchSchema()
+    } else {
+      setLoadingSchema(false)
+      setModelInfo(null)
+    }
+  }, [hasTrainedModel])
 
   const fetchSchema = async () => {
     try {
@@ -107,9 +121,17 @@ function ModelTestModal({ onClose }) {
             <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>🧪</span> Test Model with Custom Input
             </h2>
-            {modelInfo && (
+            {modelInfo && hasTrainedModel ? (
               <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px', display: 'block' }}>
                 Model: <strong>{modelInfo.modelName}</strong> • Target: <strong>{modelInfo.targetColumn}</strong> ({modelInfo.taskType})
+              </span>
+            ) : !hasModelNode ? (
+              <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px', display: 'block' }}>
+                No model node in current pipeline
+              </span>
+            ) : (
+              <span style={{ fontSize: '12px', color: '#f59e0b', marginTop: '2px', display: 'block' }}>
+                Model training required
               </span>
             )}
           </div>
@@ -131,13 +153,57 @@ function ModelTestModal({ onClose }) {
 
         {/* Body */}
         <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
-          {loadingSchema && (
+          {!hasModelNode && (
+            <div style={{ textAlign: 'center', padding: '36px 20px' }}>
+              <div style={{ fontSize: '40px', marginBottom: '12px' }}>🧩</div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
+                No Model in Current Pipeline
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', maxWidth: '440px', margin: '0 auto 20px', lineHeight: 1.6 }}>
+                Your current pipeline only contains preprocessing steps and no machine learning model.
+                <br /><br />
+                To train and test predictions, drag a <strong>Classifier</strong> or <strong>Regressor</strong> node from the left palette onto the canvas, connect it to your split data, and click <strong>"▶ Run Pipeline"</strong>!
+              </p>
+              <button
+                type="button"
+                className="btn btn--primary"
+                style={{ padding: '8px 22px', fontSize: '13px' }}
+                onClick={onClose}
+              >
+                Close
+              </button>
+            </div>
+          )}
+
+          {hasModelNode && !hasTrainedModel && (
+            <div style={{ textAlign: 'center', padding: '36px 20px' }}>
+              <div style={{ fontSize: '40px', marginBottom: '12px' }}>⏳</div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
+                Model Not Trained Yet
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', maxWidth: '440px', margin: '0 auto 20px', lineHeight: 1.6 }}>
+                Your pipeline has a model node (<strong>{modelNodes.map(m => m.data?.label || m.data?.nodeType).join(', ')}</strong>), but it hasn't been trained yet.
+                <br /><br />
+                Click <strong>"▶ Run Pipeline"</strong> in the top toolbar to train your model before testing predictions.
+              </p>
+              <button
+                type="button"
+                className="btn btn--primary"
+                style={{ padding: '8px 22px', fontSize: '13px' }}
+                onClick={onClose}
+              >
+                Close
+              </button>
+            </div>
+          )}
+
+          {hasTrainedModel && loadingSchema && (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-secondary)' }}>
               ⏳ Loading model schema and test features…
             </div>
           )}
 
-          {schemaError && (
+          {hasTrainedModel && schemaError && (
             <div style={{
               background: 'rgba(239, 68, 68, 0.15)',
               border: '1px solid rgba(239, 68, 68, 0.3)',
@@ -151,7 +217,7 @@ function ModelTestModal({ onClose }) {
             </div>
           )}
 
-          {modelInfo && (
+          {hasTrainedModel && modelInfo && (
             <form onSubmit={handlePredict}>
               {/* Sample loader toolbar */}
               {modelInfo.sampleRecords?.length > 0 && (

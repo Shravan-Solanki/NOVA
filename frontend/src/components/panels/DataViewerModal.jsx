@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react'
 import { getDatasetPreview } from '../../api/api'
 
 function DataViewerModal({ dataInfo, onClose }) {
-  const [activeTab, setActiveTab] = useState('table') // 'table' | 'stats'
+  const [activeTab, setActiveTab] = useState('table') // 'table' | 'stats' | 'analytics'
   const [page, setPage]           = useState(1)
   const [limit, setLimit]         = useState(20)
   const [dataset, setDataset]     = useState(null)
@@ -123,6 +123,21 @@ function DataViewerModal({ dataInfo, onClose }) {
                 onClick={() => setActiveTab('stats')}
               >
                 📈 Column Statistics ({dataset?.columns?.length || 0})
+              </button>
+              <button
+                style={{
+                  background: activeTab === 'analytics' ? 'var(--color-accent)' : 'var(--color-bg-surface)',
+                  color: activeTab === 'analytics' ? '#fff' : 'var(--color-text-secondary)',
+                  border: '1px solid var(--color-border)',
+                  padding: '5px 14px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+                onClick={() => setActiveTab('analytics')}
+              >
+                🔬 Analytics
               </button>
             </div>
           </div>
@@ -362,6 +377,115 @@ function DataViewerModal({ dataInfo, onClose }) {
               </table>
             </div>
           )}
+
+          {/* TAB 3: ANALYTICS */}
+          {!loading && !error && dataset && activeTab === 'analytics' && (() => {
+            const stats = dataset.colStats || []
+            const nullyCols = stats.filter(c => c.nullCount > 0)
+            const catCols = stats.filter(c => c.topValues && c.topValues.length > 0)
+            const numCols = stats.filter(c => c.min !== undefined)
+            const targetStat = stats.find(c => c.name === targetColumn)
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '20px' }}>
+
+                {/* Class Distribution (for target or categorical) */}
+                {targetStat?.valueCounts && (
+                  <div className="analytics-card">
+                    <h4 className="analytics-card__title">🎯 Target Column Distribution: <em>{targetColumn}</em></h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {Object.entries(targetStat.valueCounts)
+                        .sort(([,a],[,b]) => b - a)
+                        .map(([cls, count]) => {
+                          const pct = ((count / dataset.totalRows) * 100).toFixed(1)
+                          return (
+                            <div key={cls} className="feat-imp__row">
+                              <span className="feat-imp__label" style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{cls}</span>
+                              <div className="feat-imp__bar-track">
+                                <div className="feat-imp__bar-fill" style={{ width: `${pct}%`, background: '#a78bfa' }} />
+                              </div>
+                              <span className="feat-imp__value">{count} ({pct}%)</span>
+                            </div>
+                          )
+                        })
+                      }
+                    </div>
+                  </div>
+                )}
+
+                {/* Missing Values */}
+                <div className="analytics-card">
+                  <h4 className="analytics-card__title">🕳 Missing Values</h4>
+                  {nullyCols.length === 0 ? (
+                    <p style={{ fontSize: '13px', color: 'var(--color-success)' }}>✅ No missing values found!</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {nullyCols.map(col => (
+                        <div key={col.name} className="feat-imp__row">
+                          <span className="feat-imp__label" style={{ color: 'var(--color-warning)' }}>{col.name}</span>
+                          <div className="feat-imp__bar-track">
+                            <div className="feat-imp__bar-fill" style={{ width: `${col.nullPct}%`, background: '#f59e0b' }} />
+                          </div>
+                          <span className="feat-imp__value">{col.nullCount} ({col.nullPct}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Numeric Column Ranges */}
+                {numCols.length > 0 && (
+                  <div className="analytics-card">
+                    <h4 className="analytics-card__title">📐 Numeric Column Ranges</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
+                      {numCols.map(col => (
+                        <div key={col.name} style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '8px',
+                          padding: '10px 12px'
+                        }}>
+                          <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: col.name === targetColumn ? '#c084fc' : 'var(--color-text-primary)' }}>
+                            {col.name} {col.name === targetColumn && <em style={{ fontWeight: 400, fontSize: '10px' }}>(target)</em>}
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                            <span>Min: <strong style={{ color: '#38bdf8' }}>{col.min}</strong></span>
+                            <span>Mean: <strong style={{ color: '#a78bfa' }}>{col.mean}</strong></span>
+                            <span>Max: <strong style={{ color: '#f97316' }}>{col.max}</strong></span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Categorical column top values */}
+                {catCols.length > 0 && (
+                  <div className="analytics-card">
+                    <h4 className="analytics-card__title">🏷 Categorical Columns</h4>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {catCols.map(col => (
+                        <div key={col.name} style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '8px',
+                          padding: '8px 12px',
+                          minWidth: '160px'
+                        }}>
+                          <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>{col.name}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                            Top: {col.topValues.slice(0, 4).join(', ')} …
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )
+          })()}
+
         </div>
       </div>
     </div>

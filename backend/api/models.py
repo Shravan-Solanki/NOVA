@@ -11,6 +11,7 @@ from typing import Dict, Any, Optional
 
 from core.model_store import (
     get_model_bundle,
+    clear_model_bundle,
     predict_from_input,
     generate_test_script,
     generate_readme
@@ -18,6 +19,13 @@ from core.model_store import (
 from utils.code_exporter import PythonExporter
 
 router = APIRouter()
+
+
+@router.post("/clear")
+def clear_current_model():
+    """Clears the currently cached trained model bundle."""
+    clear_model_bundle()
+    return {"status": "ok", "message": "Trained model cleared"}
 
 
 class PredictRequest(BaseModel):

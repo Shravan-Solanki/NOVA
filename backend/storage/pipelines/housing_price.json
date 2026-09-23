@@ -5,8 +5,8 @@
       "id": "imputer-1789570871554",
       "type": "imputer",
       "position": {
-        "x": 259.3646874118759,
-        "y": 130.06676276985343
+        "x": 340,
+        "y": 80
       },
       "data": {
         "label": "Imputer",
@@ -34,8 +34,8 @@
       "id": "dataLoader-1789570889287",
       "type": "dataLoader",
       "position": {
-        "x": 15.848749997250039,
-        "y": 110.37824017037303
+        "x": 80,
+        "y": 80
       },
       "data": {
         "label": "Data Loader",
@@ -87,8 +87,8 @@
       "id": "encoder-1789570981592",
       "type": "encoder",
       "position": {
-        "x": 275.9444959167015,
-        "y": 248.19789836673579
+        "x": 860,
+        "y": 80
       },
       "data": {
         "label": "Encoder",
@@ -113,8 +113,8 @@
       "id": "scaler-1789570989486",
       "type": "scaler",
       "position": {
-        "x": 101.85650661603282,
-        "y": 421.24964963585285
+        "x": 1120,
+        "y": 80
       },
       "data": {
         "label": "Scaler",
@@ -133,8 +133,8 @@
       "id": "regressor-1789570998769",
       "type": "regressor",
       "position": {
-        "x": 396.1481075766869,
-        "y": 491.7138357813615
+        "x": 1380,
+        "y": 80
       },
       "data": {
         "label": "Regressor",
@@ -154,8 +154,8 @@
       "id": "evaluator-1789571000781",
       "type": "evaluator",
       "position": {
-        "x": 588.8883814452843,
-        "y": 346.64051136413764
+        "x": 1640,
+        "y": 80
       },
       "data": {
         "label": "Evaluator",
@@ -186,8 +186,8 @@
       "id": "trainTestSplit-1789571035509",
       "type": "trainTestSplit",
       "position": {
-        "x": 483.1921022270212,
-        "y": 118.66814442278584
+        "x": 600,
+        "y": 80
       },
       "data": {
         "label": "Train/Test Split",

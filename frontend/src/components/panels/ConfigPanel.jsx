@@ -1,9 +1,43 @@
 // src/components/panels/ConfigPanel.jsx
 // Right-side configuration panel — shows editable parameters for the selected node
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import useGraphStore from '../../store/graphStore'
 import { uploadCSV, listUploads, selectUpload, deleteUpload } from '../../api/api'
+
+// ─── PARAMETER HINT TOOLTIPS ─────────────────────────────────────────────────
+// Plain-English explanations for every configurable parameter
+const PARAM_HINTS = {
+  // DataLoader
+  targetColumn:   'The column your model should predict. E.g. "species" for Iris, "price" for house data.',
+  dropColumns:    'Columns to exclude from training — e.g. ID columns, row numbers, or irrelevant fields.',
+  // TrainTestSplit
+  testSize:       'What fraction of your data is reserved for testing. 0.2 = 20%. Keep between 0.1 and 0.3.',
+  randomState:    'A seed number for reproducible results. Any integer works — 42 is a common convention.',
+  shuffle:        'Randomize row order before splitting. Keep ON unless your data is time-series.',
+  // Imputer
+  strategy:       'How to fill missing values. Mean/Median work for numbers; Most Frequent for categories; Drop removes incomplete rows.',
+  fillValue:      'The value to fill in when strategy is "constant". E.g. 0 or "Unknown".',
+  columns:        'Which columns to apply this step to. Leave empty to apply to all eligible columns.',
+  // Scaler
+  scalerType:     'StandardScaler: centers data to mean 0, std 1. MinMaxScaler: scales values to 0–1 range.',
+  // Encoder
+  encoderType:    'OneHotEncoder: creates a new column per category (recommended). LabelEncoder: replaces text with numbers (use only for ordinal/binary categories).',
+  // Classifier params
+  classifierType: 'Which ML algorithm to use. Decision Tree is easiest to understand; SVM is powerful for small datasets; KNN is simple and intuitive; Logistic Regression is fast and explainable.',
+  max_depth:      'How deep the decision tree can grow. Shallow trees (3–5) avoid overfitting; leave empty for unlimited depth.',
+  criterion:      'How the tree chooses splits. Gini and Entropy both work well — Gini is slightly faster.',
+  C:              'Regularization strength. Higher C = model fits training data more aggressively. Lower C = simpler model. Start with 1.0.',
+  kernel:         'The mathematical function used to transform data. RBF works for most problems; Linear is faster on large datasets.',
+  n_neighbors:    'How many nearest data points to consult for each prediction. Smaller = more complex boundary. Try 3–10.',
+  metric:         'How to measure distance between data points. Minkowski is a generalization of Euclidean distance.',
+  max_iter:       'Maximum training iterations. Increase if you see a convergence warning.',
+  // Regressor params
+  regressorType:  'Which regression algorithm. Linear Regression is simple and fast; Ridge/Lasso add regularization to prevent overfitting.',
+  alpha:          'Regularization strength. Higher = stronger penalty on complexity, simpler model. Try 0.01 to 100.',
+  // Evaluator
+  metrics:        'Which performance metrics to compute. Classification: Accuracy, F1, Precision, Recall. Regression: RMSE, MAE, R².',
+}
 
 // ─── NODE PARAMETER SCHEMAS ──────────────────────────────────────────────────
 // Defines what input fields appear in the panel for each node type
@@ -86,14 +120,70 @@ const NODE_DESCRIPTIONS = {
   confusionMatrix:'Generates a confusion matrix heatmap. Connect after the Evaluator node.',
 }
 
+// ─── ParamGuide & ParamGuideCard ──────────────────────────────────────────────
+function ParamGuideBtn({ paramKey, activeHint, setActiveHint }) {
+  const hint = PARAM_HINTS[paramKey]
+  if (!hint) return null
+  const isActive = activeHint === paramKey
+  return (
+    <button
+      type="button"
+      className={`param-hint-btn ${isActive ? 'param-hint-btn--active' : ''}`}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setActiveHint(isActive ? null : paramKey)
+      }}
+      title={isActive ? 'Close guide' : 'Parameter explanation'}
+    >
+      {isActive ? '✕' : 'ℹ'}
+    </button>
+  )
+}
+
+function ParamGuideCard({ paramKey, activeHint, setActiveHint }) {
+  if (activeHint !== paramKey) return null
+  const hint = PARAM_HINTS[paramKey]
+  if (!hint) return null
+  return (
+    <div className="param-guide-card">
+      <div className="param-guide-card__header">
+        <span className="param-guide-card__icon">💡</span>
+        <span className="param-guide-card__title">Parameter Guide</span>
+        <button
+          type="button"
+          className="param-guide-card__close"
+          onClick={() => setActiveHint(null)}
+          title="Dismiss"
+        >
+          ✕
+        </button>
+      </div>
+      <p className="param-guide-card__text">{hint}</p>
+    </div>
+  )
+}
+
 // ─── ParamField ───────────────────────────────────────────────────────────────
-function ParamField({ field, value, onChange }) {
+function ParamField({ field, value, onChange, activeHint, setActiveHint }) {
   const val = value !== undefined ? value : field.default
+
+  const renderGuide = () => (
+    <ParamGuideCard
+      paramKey={field.key}
+      activeHint={activeHint}
+      setActiveHint={setActiveHint}
+    />
+  )
 
   if (field.type === 'text') {
     return (
       <div className="param-row">
-        <label>{field.label}</label>
+        <label>
+          <span>{field.label}</span>
+          <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+        </label>
+        {renderGuide()}
         <input type="text" value={val || ''} onChange={e => onChange(field.key, e.target.value)} />
       </div>
     )
@@ -102,7 +192,11 @@ function ParamField({ field, value, onChange }) {
   if (field.type === 'number') {
     return (
       <div className="param-row">
-        <label>{field.label}</label>
+        <label>
+          <span>{field.label}</span>
+          <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+        </label>
+        {renderGuide()}
         <input
           type="number"
           value={val ?? ''}
@@ -118,7 +212,11 @@ function ParamField({ field, value, onChange }) {
   if (field.type === 'slider') {
     return (
       <div className="param-row">
-        <label>{field.label} <span className="param-value">{val}</span></label>
+        <label>
+          <span>{field.label} <span className="param-value">{val}</span></span>
+          <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+        </label>
+        {renderGuide()}
         <input
           type="range"
           min={field.min} max={field.max} step={field.step}
@@ -132,7 +230,11 @@ function ParamField({ field, value, onChange }) {
   if (field.type === 'select') {
     return (
       <div className="param-row">
-        <label>{field.label}</label>
+        <label>
+          <span>{field.label}</span>
+          <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+        </label>
+        {renderGuide()}
         <select value={val} onChange={e => onChange(field.key, e.target.value)}>
           {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
         </select>
@@ -143,7 +245,11 @@ function ParamField({ field, value, onChange }) {
   if (field.type === 'toggle') {
     return (
       <div className="param-row param-row--toggle">
-        <label>{field.label}</label>
+        <label>
+          <span>{field.label}</span>
+          <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+        </label>
+        {renderGuide()}
         <input
           type="checkbox"
           checked={!!val}
@@ -157,7 +263,11 @@ function ParamField({ field, value, onChange }) {
     const selected = Array.isArray(val) ? val : field.default
     return (
       <div className="param-row param-row--multi">
-        <label>{field.label}</label>
+        <label>
+          <span>{field.label}</span>
+          <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+        </label>
+        {renderGuide()}
         <div className="multi-check">
           {field.options.map(opt => (
             <label key={opt} className="check-item">
@@ -190,8 +300,9 @@ function detectIdColumns(cols, target) {
 
 // ─── ConfigPanel ──────────────────────────────────────────────────────────────
 function ConfigPanel({ node, onClose }) {
-  const { updateNodeParams, openDataViewer, nodes, edges } = useGraphStore()
+  const { updateNodeParams, openDataViewer, nodes, edges, openResults, executionResults } = useGraphStore()
   const [params, setParams] = useState({})
+  const [activeHint, setActiveHint] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(null)
 
@@ -202,6 +313,7 @@ function ConfigPanel({ node, onClose }) {
     if (node) {
       setParams({ ...(node.data?.params || {}) })
       setUploadError(null)
+      setActiveHint(null)
       if (node.data?.nodeType === 'dataLoader' || node.type === 'dataLoader') {
         fetchUploadedDatasets()
       }
@@ -501,7 +613,11 @@ function ConfigPanel({ node, onClose }) {
           if (nodeType === 'dataLoader' && field.key === 'targetColumn' && availableCols.length > 0) {
             return (
               <div key={field.key} className="param-row">
-                <label>{field.label}</label>
+                <label>
+                  <span>{field.label}</span>
+                  <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+                </label>
+                <ParamGuideCard paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
                 <select
                   value={params.targetColumn || ''}
                   onChange={e => {
@@ -524,19 +640,34 @@ function ConfigPanel({ node, onClose }) {
             )
           }
 
-          // If this is dropColumns on DataLoader and columns are known
+          // If this is dropColumns on DataLoader
           if (nodeType === 'dataLoader' && field.key === 'dropColumns') {
-            if (!availableCols || availableCols.length === 0) return null
             const candidateDropCols = availableCols.filter(c => c !== params.targetColumn)
             const dropped = Array.isArray(params.dropColumns) ? params.dropColumns : []
+
+            if (!availableCols || availableCols.length === 0) {
+              return (
+                <div key={field.key} className="param-row">
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>{field.label}</span>
+                    <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+                  </label>
+                  <ParamGuideCard paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+                  <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontStyle: 'italic', margin: '4px 0' }}>
+                    Upload or select a CSV dataset above to choose columns to exclude.
+                  </p>
+                </div>
+              )
+            }
 
             return (
               <div key={field.key} className="param-row">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <label style={{ margin: 0 }}>
-                    {field.label}
+                  <label style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>{field.label}</span>
+                    <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
                     {dropped.length > 0 && (
-                      <span style={{ fontSize: '11px', color: '#f59e0b', marginLeft: '6px', fontWeight: 600 }}>
+                      <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 600 }}>
                         ({dropped.length} excluded)
                       </span>
                     )}
@@ -577,6 +708,8 @@ function ConfigPanel({ node, onClose }) {
                     </button>
                   </div>
                 </div>
+
+                <ParamGuideCard paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
 
                 <div style={{
                   maxHeight: '140px',
@@ -664,7 +797,10 @@ function ConfigPanel({ node, onClose }) {
               return (
                 <div key={field.key} className="param-row">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <label style={{ margin: 0 }}>{field.label}</label>
+                    <label style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>{field.label}</span>
+                      <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+                    </label>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         type="button"
@@ -698,6 +834,8 @@ function ConfigPanel({ node, onClose }) {
                       </button>
                     </div>
                   </div>
+
+                  <ParamGuideCard paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
 
                   <div style={{
                     maxHeight: '160px',
@@ -763,7 +901,11 @@ function ConfigPanel({ node, onClose }) {
 
             return (
               <div key={field.key} className="param-row">
-                <label>{field.label}</label>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>{field.label}</span>
+                  <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+                </label>
+                <ParamGuideCard paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
                 <input
                   type="text"
                   placeholder={isImputer ? 'e.g. total_bedrooms (leave blank for auto)' : 'e.g. Sex, Embarked (leave blank for auto)'}
@@ -829,7 +971,11 @@ function ConfigPanel({ node, onClose }) {
 
             return (
               <div key={field.key} className="param-row" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <label style={{ fontSize: '13px', fontWeight: 600 }}>{field.label}</label>
+                <label style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>{field.label}</span>
+                  <ParamGuideBtn paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
+                </label>
+                <ParamGuideCard paramKey={field.key} activeHint={activeHint} setActiveHint={setActiveHint} />
 
                 {/* Model context badge and quick preset */}
                 {upstreamTask && (
@@ -1026,6 +1172,8 @@ function ConfigPanel({ node, onClose }) {
               field={field}
               value={params[field.key]}
               onChange={handleChange}
+              activeHint={activeHint}
+              setActiveHint={setActiveHint}
             />
           )
         })}
@@ -1067,6 +1215,30 @@ function ConfigPanel({ node, onClose }) {
                   </div>
                 ))}
             </div>
+          )}
+          {(node.data.results || executionResults) && (
+            <button
+              type="button"
+              className="btn btn--secondary"
+              style={{
+                width: '100%',
+                marginTop: '12px',
+                padding: '6px 12px',
+                fontSize: '11px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                borderColor: 'rgba(56, 189, 248, 0.4)',
+                color: '#38bdf8',
+                background: 'rgba(56, 189, 248, 0.1)',
+                cursor: 'pointer'
+              }}
+              onClick={openResults}
+            >
+              <span>📊</span> Open Full Results Panel
+            </button>
           )}
         </div>
       )}

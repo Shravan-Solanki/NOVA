@@ -44,6 +44,7 @@ export const exportPython = (payload) => api.post('/export/python', payload)
 // ─── TRAINED MODEL & LIVE PREDICTION ─────────────────────────────────────────
 export const getModelSchema  = ()            => api.get('/models/schema')
 export const predictModel    = (inputs)      => api.post('/models/predict', { inputs })
+export const clearModelBundle = ()           => api.post('/models/clear')
 export const getModelDownloadUrl = (type)    => `${BASE_URL}/models/download/${type}`
 
 export default api

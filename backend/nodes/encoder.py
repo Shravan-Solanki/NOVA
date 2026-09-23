@@ -24,12 +24,19 @@ class EncoderNode(BaseNode):
         y_train = merged_inputs.get("y_train")
         y_test  = merged_inputs.get("y_test")
 
-        if X_train is None or X_test is None:
-            raise ValueError("X_train and X_test must be provided as inputs")
+        # Support being placed before train_test_split (on X and y)
+        is_pre_split = False
+        if X_train is None:
+            if "X" in merged_inputs:
+                X_train = merged_inputs["X"]
+                y_train = merged_inputs.get("y")
+                is_pre_split = True
+            else:
+                raise ValueError("X_train (or X) must be provided as inputs to EncoderNode")
 
         if not isinstance(X_train, pd.DataFrame):
             X_train = pd.DataFrame(X_train)
-        if not isinstance(X_test, pd.DataFrame):
+        if not is_pre_split and not isinstance(X_test, pd.DataFrame):
             X_test = pd.DataFrame(X_test)
 
         encoderType = self.params.get("encoderType", "OneHotEncoder")
@@ -46,49 +53,79 @@ class EncoderNode(BaseNode):
 
         if not columns:
             self._result_metadata = {"type": "info", "encoderType": encoderType, "encodedColumns": []}
+            if is_pre_split:
+                return {"X": X_train, "y": y_train, "columns": []}
             return {"X_train": X_train, "X_test": X_test, "y_train": y_train, "y_test": y_test, "columns": []}
 
         if encoderType == "OneHotEncoder":
             # BUG FIX 1: encode only the detected/specified columns, not the whole DataFrame
             encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-            X_train_cat = encoder.fit_transform(X_train[columns])
-            X_test_cat  = encoder.transform(X_test[columns])
-            new_column_names = encoder.get_feature_names_out(columns)
-            # Drop original categorical columns, add the new one-hot columns
-            X_train_encoded = X_train.drop(columns=columns).reset_index(drop=True)
-            X_test_encoded  = X_test.drop(columns=columns).reset_index(drop=True)
-            X_train_encoded = pd.concat([X_train_encoded, pd.DataFrame(X_train_cat, columns=new_column_names)], axis=1)
-            X_test_encoded  = pd.concat([X_test_encoded,  pd.DataFrame(X_test_cat,  columns=new_column_names)], axis=1)
-            self._result_metadata = {"type": "info", "encoderType": encoderType, "encodedColumns": list(columns)}
-            return {
-                "X_train": X_train_encoded,
-                "X_test": X_test_encoded,
-                "y_train": y_train,
-                "y_test": y_test,
-                "encoder": encoder,
-                "columns": list(columns)
-            }
+            if is_pre_split:
+                X_train_cat = encoder.fit_transform(X_train[columns])
+                new_column_names = encoder.get_feature_names_out(columns)
+                X_train_encoded = X_train.drop(columns=columns).reset_index(drop=True)
+                X_train_encoded = pd.concat([X_train_encoded, pd.DataFrame(X_train_cat, columns=new_column_names)], axis=1)
+                self._result_metadata = {"type": "info", "encoderType": encoderType, "encodedColumns": list(columns)}
+                return {
+                    "X": X_train_encoded,
+                    "y": y_train,
+                    "encoder": encoder,
+                    "columns": list(columns)
+                }
+            else:
+                X_train_cat = encoder.fit_transform(X_train[columns])
+                X_test_cat  = encoder.transform(X_test[columns])
+                new_column_names = encoder.get_feature_names_out(columns)
+                # Drop original categorical columns, add the new one-hot columns
+                X_train_encoded = X_train.drop(columns=columns).reset_index(drop=True)
+                X_test_encoded  = X_test.drop(columns=columns).reset_index(drop=True)
+                X_train_encoded = pd.concat([X_train_encoded, pd.DataFrame(X_train_cat, columns=new_column_names)], axis=1)
+                X_test_encoded  = pd.concat([X_test_encoded,  pd.DataFrame(X_test_cat,  columns=new_column_names)], axis=1)
+                self._result_metadata = {"type": "info", "encoderType": encoderType, "encodedColumns": list(columns)}
+                return {
+                    "X_train": X_train_encoded,
+                    "X_test": X_test_encoded,
+                    "y_train": y_train,
+                    "y_test": y_test,
+                    "encoder": encoder,
+                    "columns": list(columns)
+                }
 
         elif encoderType == "LabelEncoder":
             # BUG FIX 2: LabelEncoder only works on 1 column at a time — loop over each column
-            X_train_encoded = X_train.copy()
-            X_test_encoded  = X_test.copy()
-            le_dict = {}
-            for col in columns:
-                le = LabelEncoder()
-                X_train_encoded[col] = le.fit_transform(X_train[col].astype(str))
-                # handle_unknown: use -1 for unseen labels in test set
-                X_test_encoded[col]  = X_test[col].astype(str).map(lambda x: le.transform([x])[0] if x in le.classes_ else -1)
-                le_dict[col] = le
-            self._result_metadata = {"type": "info", "encoderType": encoderType, "encodedColumns": list(columns)}
-            return {
-                "X_train": X_train_encoded,
-                "X_test": X_test_encoded,
-                "y_train": y_train,
-                "y_test": y_test,
-                "label_encoders": le_dict,
-                "columns": list(columns)
-            }
+            if is_pre_split:
+                X_train_encoded = X_train.copy()
+                le_dict = {}
+                for col in columns:
+                    le = LabelEncoder()
+                    X_train_encoded[col] = le.fit_transform(X_train[col].astype(str))
+                    le_dict[col] = le
+                self._result_metadata = {"type": "info", "encoderType": encoderType, "encodedColumns": list(columns)}
+                return {
+                    "X": X_train_encoded,
+                    "y": y_train,
+                    "label_encoders": le_dict,
+                    "columns": list(columns)
+                }
+            else:
+                X_train_encoded = X_train.copy()
+                X_test_encoded  = X_test.copy()
+                le_dict = {}
+                for col in columns:
+                    le = LabelEncoder()
+                    X_train_encoded[col] = le.fit_transform(X_train[col].astype(str))
+                    # handle_unknown: use -1 for unseen labels in test set
+                    X_test_encoded[col]  = X_test[col].astype(str).map(lambda x: le.transform([x])[0] if x in le.classes_ else -1)
+                    le_dict[col] = le
+                self._result_metadata = {"type": "info", "encoderType": encoderType, "encodedColumns": list(columns)}
+                return {
+                    "X_train": X_train_encoded,
+                    "X_test": X_test_encoded,
+                    "y_train": y_train,
+                    "y_test": y_test,
+                    "label_encoders": le_dict,
+                    "columns": list(columns)
+                }
 
         else:
             raise ValueError(f"Unknown encoder type: {encoderType}")

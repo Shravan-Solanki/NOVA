@@ -50,10 +50,10 @@ function EvaluatorNode({ id, data }) {
       {results ? (
         <div className="node-metrics">
           {Object.entries(results)
-            .filter(([k]) => !['type', 'taskType', 'modelName'].includes(k))
+            .filter(([k, v]) => !['type', 'taskType', 'modelName', 'feature_importances', 'train_score'].includes(k) && typeof v !== 'object' && v != null)
             .map(([k, v]) => (
               <p key={k} className="node-info">
-                {k}: <strong>{typeof v === 'number' ? v.toFixed(4) : v}</strong>
+                {k}: <strong>{typeof v === 'number' ? (['accuracy', 'f1', 'precision', 'recall'].includes(k) ? (v * 100).toFixed(1) + '%' : v.toFixed(3)) : String(v)}</strong>
               </p>
             ))}
         </div>

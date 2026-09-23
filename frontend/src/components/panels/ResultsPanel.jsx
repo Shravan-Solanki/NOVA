@@ -2,13 +2,82 @@ import React from 'react'
 import useGraphStore from '../../store/graphStore'
 
 function MetricCard({ label, value }) {
+  if (value == null || typeof value === 'object') return null
   const formatted = typeof value === 'number'
-    ? (value <= 1 ? (value * 100).toFixed(1) + '%' : value.toFixed(3))
-    : value
+    ? (value <= 1 && ['accuracy', 'f1', 'precision', 'recall'].includes(label.toLowerCase())
+        ? (value * 100).toFixed(1) + '%'
+        : value.toFixed(3))
+    : String(value)
   return (
     <div className="metric-card">
       <span className="metric-card__value">{formatted}</span>
       <span className="metric-card__label">{label}</span>
+    </div>
+  )
+}
+
+// ── Feature Importance Chart ──────────────────────────────────────────────────
+function FeatureImportanceChart({ importances }) {
+  if (!Array.isArray(importances) || importances.length === 0) return null
+  const top = importances.slice(0, 10) // show top 10
+  const max = top[0]?.importance || 1
+
+  return (
+    <div className="feat-imp">
+      <h4 className="feat-imp__title">📊 Feature Importance</h4>
+      <div className="feat-imp__bars">
+        {top.map(({ feature, importance }) => (
+          <div key={feature} className="feat-imp__row">
+            <span className="feat-imp__label">{feature}</span>
+            <div className="feat-imp__bar-track">
+              <div
+                className="feat-imp__bar-fill"
+                style={{ width: `${Math.max(0, Math.min(100, (importance / max) * 100))}%` }}
+              />
+            </div>
+            <span className="feat-imp__value">{(importance * 100).toFixed(1)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Train vs Test Score ───────────────────────────────────────────────────────
+function TrainTestScore({ trainScore, testScore, taskType }) {
+  if (typeof trainScore !== 'number' || typeof testScore !== 'number') return null
+  const label = taskType === 'regression' ? 'R² Score' : 'Accuracy'
+  const clampPct = (val) => Math.max(0, Math.min(100, val * 100)).toFixed(1)
+  const trainPct = clampPct(trainScore)
+  const testPct  = clampPct(testScore)
+  const diff = Math.abs(trainScore - testScore)
+  const overfit = diff > 0.05
+
+  return (
+    <div className="train-test-score">
+      <h4 className="train-test-score__title">
+        📈 Train vs Test {label}
+        {overfit && (
+          <span className="train-test-score__warn">⚠ Possible overfitting</span>
+        )}
+      </h4>
+      <div className="train-test-score__bars">
+        {[
+          { label: 'Train', value: trainScore, pct: trainPct, color: '#38bdf8' },
+          { label: 'Test',  value: testScore,  pct: testPct,  color: '#a78bfa' },
+        ].map(({ label, pct, color }) => (
+          <div key={label} className="feat-imp__row">
+            <span className="feat-imp__label" style={{ minWidth: '40px' }}>{label}</span>
+            <div className="feat-imp__bar-track">
+              <div
+                className="feat-imp__bar-fill"
+                style={{ width: `${pct}%`, background: color }}
+              />
+            </div>
+            <span className="feat-imp__value">{pct}%</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -119,43 +188,70 @@ function ResultsPanel({ results, onClose }) {
           flexWrap: 'wrap',
           alignItems: 'center'
         }}>
-          <button
-            type="button"
-            className="btn btn--primary"
-            style={{
-              padding: '8px 16px',
-              fontSize: '12px',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-            onClick={openTestModel}
-          >
-            <span>🧪</span> Test Model with Custom Input
-          </button>
+          {nodes.some(n => ((n.data?.nodeType || n.type) === 'classifier' || (n.data?.nodeType || n.type) === 'regressor') && n.data?.status === 'success') ? (
+            <button
+              type="button"
+              className="btn btn--primary"
+              style={{
+                padding: '8px 16px',
+                fontSize: '12px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              onClick={openTestModel}
+            >
+              <span>🧪</span> Test Model with Custom Input
+            </button>
+          ) : (
+            <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              💡 <em>Add a Classifier or Regressor node to train a model and test predictions.</em>
+            </span>
+          )}
 
-          <button
-            type="button"
-            className="btn btn--secondary"
-            style={{
-              padding: '8px 16px',
-              fontSize: '12px',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-            onClick={openExportModal}
-          >
-            <span>💾</span> Save &amp; Download Options (.joblib, Python code, ZIP)
-          </button>
+          {nodes.some(n => ((n.data?.nodeType || n.type) === 'classifier' || (n.data?.nodeType || n.type) === 'regressor') && n.data?.status === 'success') ? (
+            <button
+              type="button"
+              className="btn btn--secondary"
+              style={{
+                padding: '8px 16px',
+                fontSize: '12px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              onClick={openExportModal}
+            >
+              <span>💾</span> Download Model &amp; Package (.joblib, ZIP, code)
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn--secondary"
+              style={{
+                padding: '8px 16px',
+                fontSize: '12px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              onClick={openExportModal}
+            >
+              <span>🐍</span> Export Pipeline Python Code (.py)
+            </button>
+          )}
         </div>
 
-        {/* Evaluator Metrics (Shows clear algorithm name and compares multiple models) */}
+        {/* Evaluator Metrics + Feature Importance + Train/Test Score */}
         {evaluatorEntries.map(([nodeId, meta], idx) => {
-          const metrics = Object.entries(meta).filter(([k]) => !['type', 'taskType', 'modelName'].includes(k))
-          const { algoName, nodeLabel } = getAlgorithmDisplay(nodeId, meta)
+          const SKIP_KEYS = ['type', 'taskType', 'modelName', 'feature_importances', 'train_score']
+          const metrics = Object.entries(meta).filter(([k, v]) => !SKIP_KEYS.includes(k) && typeof v !== 'object' && v != null)
+          const { algoName } = getAlgorithmDisplay(nodeId, meta)
+          // Determine test accuracy/r2 for TrainTestScore
+          const testScore = typeof meta.accuracy === 'number' ? meta.accuracy : (typeof meta.r2 === 'number' ? meta.r2 : null)
 
           return (
             <section key={nodeId} className="results-section">
@@ -198,6 +294,16 @@ function ResultsPanel({ results, onClose }) {
                   <MetricCard key={k} label={k} value={v} />
                 ))}
               </div>
+
+              {/* Train vs Test comparison */}
+              <TrainTestScore
+                trainScore={meta.train_score}
+                testScore={testScore}
+                taskType={meta.taskType}
+              />
+
+              {/* Feature Importance chart */}
+              <FeatureImportanceChart importances={meta.feature_importances} />
             </section>
           )
         })}

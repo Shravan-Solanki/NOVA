@@ -22,8 +22,23 @@ class DataLoaderNode(BaseNode):
         file_path = self.params.get("filePath")
         target_col = self.params.get("targetColumn")
 
-        if not file_path or not os.path.exists(file_path):
-            raise ValueError(f"CSV file not found: {file_path}")
+        if not file_path:
+            raise ValueError("No CSV file specified")
+
+        if not os.path.exists(file_path):
+            # Check in storage/uploads directory (case-insensitive for portable template support)
+            uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "storage", "uploads")
+            base_name = os.path.basename(file_path).lower()
+            found = None
+            if os.path.exists(uploads_dir):
+                for f in os.listdir(uploads_dir):
+                    if f.lower() == base_name:
+                        found = os.path.join(uploads_dir, f)
+                        break
+            if found:
+                file_path = found
+            else:
+                raise ValueError(f"CSV file not found: {file_path}")
 
         try:
             df = pd.read_csv(file_path)

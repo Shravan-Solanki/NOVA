@@ -163,9 +163,17 @@ async def preview_uploaded_csv(
                     stat["min"] = round(float(clean_s.min()), 3)
                     stat["max"] = round(float(clean_s.max()), 3)
                     stat["mean"] = round(float(clean_s.mean()), 3)
+                # For low-cardinality numeric (e.g. target classes as numbers), include value counts
+                if series.nunique() <= 20:
+                    vc = series.value_counts().head(20).to_dict()
+                    stat["valueCounts"] = {str(k): int(v) for k, v in vc.items()}
             else:
                 top_vals = series.value_counts().head(3).to_dict()
                 stat["topValues"] = [f"{k} ({v})" for k, v in top_vals.items()]
+                # Include full value counts for analytics tab (up to 20 unique values)
+                if series.nunique() <= 20:
+                    vc = series.value_counts().head(20).to_dict()
+                    stat["valueCounts"] = {str(k): int(v) for k, v in vc.items()}
             col_stats.append(stat)
 
         # Pagination for rows

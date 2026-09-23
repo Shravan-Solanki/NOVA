@@ -4,15 +4,32 @@
 import React, { useState } from 'react'
 import LandingPage from './pages/LandingPage'
 import EditorPage  from './pages/EditorPage'
+import useGraphStore from './store/graphStore'
 import './styles/index.css'
+
+import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
   const [inEditor, setInEditor] = useState(false)
+  const loadTemplate = useGraphStore(s => s.loadTemplate)
 
-  if (!inEditor) {
-    return <LandingPage onEnter={() => setInEditor(true)} />
+  const handleTemplate = (templateData) => {
+    loadTemplate(templateData)
+    setInEditor(true)
   }
-  return <EditorPage onHome={() => setInEditor(false)} />
+
+  return (
+    <ErrorBoundary>
+      {!inEditor ? (
+        <LandingPage
+          onEnter={() => setInEditor(true)}
+          onTemplate={handleTemplate}
+        />
+      ) : (
+        <EditorPage onHome={() => setInEditor(false)} />
+      )}
+    </ErrorBoundary>
+  )
 }
 
 export default App

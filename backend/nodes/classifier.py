@@ -104,7 +104,7 @@ class ClassifierNode(BaseNode):
             "classes": clf.classes_.tolist()
         }
 
-        return {"model": clf, "model_name": clf_type, "X_test": X_test, "y_test": y_test}
+        return {"model": clf, "model_name": clf_type, "X_train": X_train, "y_train": y_train, "X_test": X_test, "y_test": y_test}
 
     # Expected params:
     #   classifierType : str — 'DecisionTree' | 'SVM' | 'KNN' | 'LogisticRegression'

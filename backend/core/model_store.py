@@ -13,9 +13,14 @@ from typing import Dict, Any, Optional
 CURRENT_MODEL_BUNDLE: Optional[Dict[str, Any]] = None
 
 
-def set_model_bundle(bundle: Dict[str, Any]):
+def set_model_bundle(bundle: Optional[Dict[str, Any]]):
     global CURRENT_MODEL_BUNDLE
     CURRENT_MODEL_BUNDLE = bundle
+
+
+def clear_model_bundle():
+    global CURRENT_MODEL_BUNDLE
+    CURRENT_MODEL_BUNDLE = None
 
 
 def get_model_bundle() -> Optional[Dict[str, Any]]:

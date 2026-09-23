@@ -47,7 +47,7 @@ class RegressorNode(BaseNode):
             "regressorType": reg_type,
             "modelName": reg_type
         }
-        return {"model": reg, "model_name": reg_type, "X_test": X_test, "y_test": y_test}
+        return {"model": reg, "model_name": reg_type, "X_train": X_train, "y_train": y_train, "X_test": X_test, "y_test": y_test}
     # Expected params:
     #   regressorType : str   — 'LinearRegression' or 'Ridge'
     #   alpha         : float — regularization strength (Ridge only)

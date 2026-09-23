@@ -58,6 +58,34 @@ class EvaluatorNode(BaseNode):
 
         metrics = {k: round(float(v), 4) for k, v in metrics.items()}
 
+        # ── Feature Importance (tree-based models) ───────────────────────────
+        feature_importances = None
+        if hasattr(model, 'feature_importances_'):
+            try:
+                feat_names = list(X_test.columns) if hasattr(X_test, 'columns') else []
+                importances = model.feature_importances_
+                pairs = sorted(
+                    zip(feat_names, importances.tolist()),
+                    key=lambda x: x[1], reverse=True
+                )
+                feature_importances = [{"feature": f, "importance": round(float(imp), 4)} for f, imp in pairs]
+            except Exception:
+                feature_importances = None
+
+        # ── Training score (to detect overfitting) ───────────────────────────
+        train_score = None
+        try:
+            X_train = merged_inputs.get("X_train")
+            y_train = merged_inputs.get("y_train")
+            if X_train is not None and y_train is not None:
+                y_train_pred = model.predict(X_train)
+                if taskType == "classification":
+                    train_score = round(float(accuracy_score(y_train, y_train_pred)), 4)
+                else:
+                    train_score = round(float(r2_score(y_train, y_train_pred)), 4)
+        except Exception:
+            train_score = None
+
         # Extract or infer model name
         model_name = merged_inputs.get("model_name")
         if not model_name and model is not None:
@@ -75,10 +103,20 @@ class EvaluatorNode(BaseNode):
             "type": "metrics",
             "taskType": taskType,
             "modelName": model_name or "Model",
+            "feature_importances": feature_importances,
+            "train_score": train_score,
             **metrics
         }
-        return {"metrics": metrics, "y_pred": y_pred, "model": model, "model_name": model_name,
-                "X_test": X_test, "y_test": y_test}
+        return {
+            "metrics": metrics,
+            "y_pred": y_pred,
+            "model": model,
+            "model_name": model_name,
+            "X_test": X_test,
+            "y_test": y_test,
+            "X_train": merged_inputs.get("X_train"),
+            "y_train": merged_inputs.get("y_train"),
+        }
 
     # Expected params:
     #   metrics : list[str] — e.g. ['accuracy', 'f1', 'precision', 'recall'] or ['rmse', 'r2']

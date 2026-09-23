@@ -6,7 +6,7 @@ from nodes import NODE_REGISTRY
 from collections import defaultdict, deque
 from typing import List, Dict, Any
 import pandas as pd
-from core.model_store import set_model_bundle
+from core.model_store import set_model_bundle, clear_model_bundle
 
 
 # ─── Custom Exception ─────────────────────────────────────────────────────────
@@ -74,6 +74,11 @@ class GraphExecutor:
         # Step 1: Get the safe execution order using Kahn's algorithm
         execution_order = self._topological_sort()
 
+        # If this pipeline does not contain any model node, clear any stale cached model
+        has_model = any(n.get("type") in ("classifier", "regressor") for n in self.nodes)
+        if not has_model:
+            clear_model_bundle()
+
         node_outputs = {}   # { "node-1": { "X": ..., "y": ... } }  — passed between nodes
         node_results = {}   # { "node-1": { "type": "info", ... } }  — returned to frontend
 
@@ -125,6 +130,7 @@ class GraphExecutor:
                     break
 
             if not model_node:
+                clear_model_bundle()
                 return
 
             model_id = model_node["id"]
