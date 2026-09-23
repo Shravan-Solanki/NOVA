@@ -19,7 +19,7 @@ app = FastAPI(
     description="Backend execution engine for the Visual ML Pipeline Builder",
     version="1.0.0"
 )
-
+print("Testing")
 # ─── CORS MIDDLEWARE ──────────────────────────────────────────────────────────
 # TODO: Add CORSMiddleware to app:
 app.add_middleware(
